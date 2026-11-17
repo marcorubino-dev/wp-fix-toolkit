@@ -22,7 +22,7 @@ final class ActionDefinitionTest extends TestCase
             ActionReversibility::REVERSIBLE
         );
 
-        $this->assertSame('mws/cache/clear', $definition->get_id());
+        $this->assertSame('mws/cache-clear', $definition->get_id());
         $this->assertSame('1.2.0', $definition->get_version());
         $this->assertSame(array('manage_options'), $definition->get_required_capabilities());
     }
