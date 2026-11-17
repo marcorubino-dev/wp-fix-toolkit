@@ -13,7 +13,7 @@ final class ActionDefinitionTest extends TestCase
     public function test_it_exposes_validated_definition_values()
     {
         $definition = new ActionDefinition(
-            'mws/cache/clear',
+            'mws/cache-clear',
             '1.2.0',
             'Clear cache',
             'Clears a selected cache.',
