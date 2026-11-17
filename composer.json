@@ -3,7 +3,7 @@
   "description": "Controlled, auditable execution of WordPress maintenance and repair actions.",
   "type": "wordpress-plugin",
   "require": {
-    "php": "^7.4"
+    "php": ">=7.4"
   },
   "autoload": {
     "psr-4": {
