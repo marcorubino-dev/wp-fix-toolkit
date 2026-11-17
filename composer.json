@@ -12,7 +12,8 @@
   },
   "autoload-dev": {
     "psr-4": {
-      "MWS\\WPFixToolkit\\Tests\\": "tests/"
+      "MWS\\WPFixToolkit\\Tests\\": "tests/",
+      "MWS\\WPFixToolkit\\Examples\\": "examples/"
     }
   },
   "require-dev": {
