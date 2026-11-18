@@ -2,10 +2,14 @@
 
 namespace MWS\WPFixToolkit\Domain\Results;
 
+use InvalidArgumentException;
+
 final class ExecutionOutcome
 {
     const REJECTED = 'rejected';
-    const COMPLETED = 'completed';
+    const SUCCEEDED = 'succeeded';
+    const FAILED = 'failed';
+    const PARTIAL = 'partial';
     const UNKNOWN = 'unknown';
 
     private $status;
@@ -15,8 +19,21 @@ final class ExecutionOutcome
     private $execution;
     private $verification;
 
-    public function __construct($status, $code, $message, ValidationResult $validation, ExecutionResult $execution = null, VerificationResult $verification = null)
-    {
+    public function __construct(
+        $status,
+        $code,
+        $message,
+        ValidationResult $validation,
+        ExecutionResult $execution = null,
+        VerificationResult $verification = null
+    ) {
+        if (!in_array($status, array(self::REJECTED, self::SUCCEEDED, self::FAILED, self::PARTIAL, self::UNKNOWN), true)) {
+            throw new InvalidArgumentException('Unsupported execution outcome status.');
+        }
+        if (!is_string($code) || trim($code) === '' || !is_string($message) || trim($message) === '') {
+            throw new InvalidArgumentException('Execution outcome code and message are required.');
+        }
+
         $this->status = $status;
         $this->code = $code;
         $this->message = $message;
