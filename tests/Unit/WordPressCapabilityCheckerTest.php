@@ -1,9 +1,9 @@
 <?php
 
-namespace MWS\\WPFixToolkit\\Tests\\Unit;
+namespace MWS\WPFixToolkit\Tests\Unit;
 
-use MWS\\WPFixToolkit\\Infrastructure\\WordPress\\WordPressCapabilityChecker;
-use PHPUnit\\Framework\\TestCase;
+use MWS\WPFixToolkit\Infrastructure\WordPress\WordPressCapabilityChecker;
+use PHPUnit\Framework\TestCase;
 
 final class WordPressCapabilityCheckerTest extends TestCase
 {
@@ -61,7 +61,7 @@ final class WordPressCapabilityCheckerTest extends TestCase
     {
         $checker = new WordPressCapabilityChecker(
             function () { return 12; },
-            function () { throw new \\RuntimeException('Capability API unavailable.'); }
+            function () { throw new \RuntimeException('Capability API unavailable.'); }
         );
 
         $this->assertFalse($checker->has_all(12, array('manage_options')));
