@@ -25,14 +25,9 @@ final class InMemoryExecutionApprovalStore implements ExecutionApprovalStoreInte
             return false;
         }
 
-        $key = hash('sha256', serialize(array(
-            $approval->get_execution_uuid(),
-            $approval->get_action_id(),
-            $approval->get_action_version(),
-            $approval->get_operation_fingerprint(),
-            $approval->get_approved_by(),
-            $approval->get_approved_at(),
-        )));
+        // Consume the operation identity, not an individual approval instance.
+        // Issuing a replacement approval must not make the operation executable twice.
+        $key = $approval->get_operation_fingerprint();
 
         if (isset($this->consumed[$key])) {
             return false;

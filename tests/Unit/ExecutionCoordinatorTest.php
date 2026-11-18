@@ -60,7 +60,7 @@ final class ExecutionCoordinatorTest extends TestCase
         );
     }
 
-    private function approval($context = null, $approved_at = 1700000000)
+    private function approval($context = null, $approved_at = 1700000000, $approved_by = 9)
     {
         $context = $context ?: $this->context();
         return new ExecutionApproval(
@@ -68,7 +68,7 @@ final class ExecutionCoordinatorTest extends TestCase
             $context->get_action_id(),
             $context->get_action_version(),
             $context->get_operation_fingerprint(),
-            9,
+            $approved_by,
             $approved_at
         );
     }
@@ -148,6 +148,22 @@ final class ExecutionCoordinatorTest extends TestCase
 
         $first = $coordinator->execute($context, $approval);
         $second = $coordinator->execute($context, $approval);
+
+        $this->assertSame(ExecutionOutcome::COMPLETED, $first->get_status());
+        $this->assertSame('approval_unavailable', $second->get_code());
+        $this->assertSame(1, $action->execution_calls);
+    }
+
+    public function test_a_reissued_approval_cannot_execute_the_same_operation_again()
+    {
+        $action = $this->action();
+        $context = $this->context();
+        $store = new InMemoryExecutionApprovalStore();
+
+        $first = $this->coordinator($action, true, 1700000100, $store)
+            ->execute($context, $this->approval($context, 1700000000, 9));
+        $second = $this->coordinator($action, true, 1700000101, $store)
+            ->execute($context, $this->approval($context, 1700000001, 10));
 
         $this->assertSame(ExecutionOutcome::COMPLETED, $first->get_status());
         $this->assertSame('approval_unavailable', $second->get_code());
