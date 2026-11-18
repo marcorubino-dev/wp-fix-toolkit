@@ -60,6 +60,36 @@ final class ActionContext
         return $copy;
     }
 
+    private static function canonicalize(array $value)
+    {
+        foreach ($value as $key => $item) {
+            if (is_array($item)) {
+                $value[$key] = self::canonicalize($item);
+            }
+        }
+
+        // Preserve list order; sort associative keys for stable fingerprints.
+        if ($value !== array_values($value)) {
+            ksort($value);
+        }
+
+        return $value;
+    }
+
+    public function get_operation_fingerprint()
+    {
+        $operation = array(
+            'execution_uuid' => $this->execution_uuid,
+            'action_id' => $this->action_id,
+            'action_version' => $this->action_version,
+            'requested_by' => $this->requested_by,
+            'parameters' => self::canonicalize($this->parameters),
+            'created_at' => $this->created_at,
+        );
+
+        return hash('sha256', serialize($operation));
+    }
+
     public function get_execution_uuid() { return $this->execution_uuid; }
     public function get_action_id() { return $this->action_id; }
     public function get_action_version() { return $this->action_version; }
