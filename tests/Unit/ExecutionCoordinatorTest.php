@@ -23,14 +23,7 @@ final class ExecutionCoordinatorTest extends TestCase
 {
     private function context($parameters = array(), $requested_by = 7)
     {
-        return new ActionContext(
-            '123e4567-e89b-12d3-a456-426614174000',
-            'mws-test/test-noop',
-            '1.0.0',
-            $requested_by,
-            $parameters,
-            1700000000
-        );
+        return new ActionContext('123e4567-e89b-12d3-a456-426614174000', 'mws-test/test-noop', '1.0.0', $requested_by, $parameters, 1700000000);
     }
 
     private function action($validation = null, $execution = null, $verification = null)
@@ -46,48 +39,61 @@ final class ExecutionCoordinatorTest extends TestCase
     {
         $registry = new InMemoryActionRegistry();
         $registry->register($action);
-
         $capabilities = $this->createMock(CapabilityCheckerInterface::class);
         $capabilities->method('has_all')->willReturn($allowed);
         $clock = $this->createMock(ClockInterface::class);
         $clock->method('now')->willReturn($now);
 
-        return new ExecutionCoordinator(
-            $registry,
-            $capabilities,
-            $clock,
-            $store ?: new InMemoryExecutionApprovalStore()
-        );
+        return new ExecutionCoordinator($registry, $capabilities, $clock, $store ?: new InMemoryExecutionApprovalStore());
     }
 
     private function approval($context = null, $approved_at = 1700000000, $approved_by = 9)
     {
         $context = $context ?: $this->context();
-        return new ExecutionApproval(
-            $context->get_execution_uuid(),
-            $context->get_action_id(),
-            $context->get_action_version(),
-            $context->get_operation_fingerprint(),
-            $approved_by,
-            $approved_at
-        );
+        return new ExecutionApproval($context->get_execution_uuid(), $context->get_action_id(), $context->get_action_version(), $context->get_operation_fingerprint(), $approved_by, $approved_at);
     }
 
-    public function test_it_runs_validation_execution_and_verification_in_order()
+    public function test_it_reports_success_only_after_successful_execution_and_verification()
     {
         $action = $this->action();
         $outcome = $this->coordinator($action)->execute($this->context(), $this->approval());
-
-        $this->assertSame(ExecutionOutcome::COMPLETED, $outcome->get_status());
+        $this->assertSame(ExecutionOutcome::SUCCEEDED, $outcome->get_status());
         $this->assertSame(1, $action->execution_calls);
         $this->assertSame(1, $action->verification_calls);
+    }
+
+    public function test_it_reports_failed_execution_as_failed_even_when_verification_passes()
+    {
+        $execution = new ExecutionResult(ExecutionResult::FAILED, 'test.failed', 'Action failed.');
+        $outcome = $this->coordinator($this->action(null, $execution))->execute($this->context(), $this->approval());
+        $this->assertSame(ExecutionOutcome::FAILED, $outcome->get_status());
+    }
+
+    public function test_it_reports_failed_verification_as_failed()
+    {
+        $verification = new VerificationResult(VerificationResult::FAILED, 'test.not_verified', 'Expected state was not found.');
+        $outcome = $this->coordinator($this->action(null, null, $verification))->execute($this->context(), $this->approval());
+        $this->assertSame(ExecutionOutcome::FAILED, $outcome->get_status());
+    }
+
+    public function test_it_reports_partial_execution_as_partial_when_verification_is_conclusive()
+    {
+        $execution = new ExecutionResult(ExecutionResult::PARTIAL, 'test.partial', 'Some changes were applied.', array(), true);
+        $outcome = $this->coordinator($this->action(null, $execution))->execute($this->context(), $this->approval());
+        $this->assertSame(ExecutionOutcome::PARTIAL, $outcome->get_status());
+    }
+
+    public function test_it_reports_inconclusive_verification_as_unknown()
+    {
+        $verification = new VerificationResult(VerificationResult::INCONCLUSIVE, 'test.inconclusive', 'Could not establish final state.');
+        $outcome = $this->coordinator($this->action(null, null, $verification))->execute($this->context(), $this->approval());
+        $this->assertSame(ExecutionOutcome::UNKNOWN, $outcome->get_status());
     }
 
     public function test_it_does_not_execute_when_validation_fails()
     {
         $action = $this->action(ValidationResult::blocked(array()));
         $outcome = $this->coordinator($action)->execute($this->context(), $this->approval());
-
         $this->assertSame(ExecutionOutcome::REJECTED, $outcome->get_status());
         $this->assertSame(0, $action->execution_calls);
     }
@@ -96,7 +102,6 @@ final class ExecutionCoordinatorTest extends TestCase
     {
         $action = $this->action();
         $outcome = $this->coordinator($action, false)->execute($this->context(), $this->approval());
-
         $this->assertSame('capability_denied', $outcome->get_code());
         $this->assertSame(0, $action->execution_calls);
     }
@@ -105,7 +110,6 @@ final class ExecutionCoordinatorTest extends TestCase
     {
         $action = $this->action();
         $outcome = $this->coordinator($action, true, 1700000900)->execute($this->context(), $this->approval());
-
         $this->assertSame('approval_unavailable', $outcome->get_code());
         $this->assertSame(0, $action->execution_calls);
     }
@@ -113,16 +117,8 @@ final class ExecutionCoordinatorTest extends TestCase
     public function test_it_rejects_approval_for_another_operation()
     {
         $action = $this->action();
-        $wrong = new ExecutionApproval(
-            'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-            'mws-test/test-noop',
-            '1.0.0',
-            $this->context()->get_operation_fingerprint(),
-            9,
-            1700000000
-        );
+        $wrong = new ExecutionApproval('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'mws-test/test-noop', '1.0.0', $this->context()->get_operation_fingerprint(), 9, 1700000000);
         $outcome = $this->coordinator($action)->execute($this->context(), $wrong);
-
         $this->assertSame('approval_unavailable', $outcome->get_code());
         $this->assertSame(0, $action->execution_calls);
     }
@@ -132,9 +128,7 @@ final class ExecutionCoordinatorTest extends TestCase
         $approved_context = $this->context(array('target' => 'cache-a'));
         $changed_context = $this->context(array('target' => 'cache-b'));
         $action = $this->action();
-
         $outcome = $this->coordinator($action)->execute($changed_context, $this->approval($approved_context));
-
         $this->assertSame('approval_unavailable', $outcome->get_code());
         $this->assertSame(0, $action->execution_calls);
     }
@@ -145,11 +139,9 @@ final class ExecutionCoordinatorTest extends TestCase
         $context = $this->context();
         $approval = $this->approval($context);
         $coordinator = $this->coordinator($action);
-
         $first = $coordinator->execute($context, $approval);
         $second = $coordinator->execute($context, $approval);
-
-        $this->assertSame(ExecutionOutcome::COMPLETED, $first->get_status());
+        $this->assertSame(ExecutionOutcome::SUCCEEDED, $first->get_status());
         $this->assertSame('approval_unavailable', $second->get_code());
         $this->assertSame(1, $action->execution_calls);
     }
@@ -159,13 +151,9 @@ final class ExecutionCoordinatorTest extends TestCase
         $action = $this->action();
         $context = $this->context();
         $store = new InMemoryExecutionApprovalStore();
-
-        $first = $this->coordinator($action, true, 1700000100, $store)
-            ->execute($context, $this->approval($context, 1700000000, 9));
-        $second = $this->coordinator($action, true, 1700000101, $store)
-            ->execute($context, $this->approval($context, 1700000001, 10));
-
-        $this->assertSame(ExecutionOutcome::COMPLETED, $first->get_status());
+        $first = $this->coordinator($action, true, 1700000100, $store)->execute($context, $this->approval($context, 1700000000, 9));
+        $second = $this->coordinator($action, true, 1700000101, $store)->execute($context, $this->approval($context, 1700000001, 10));
+        $this->assertSame(ExecutionOutcome::SUCCEEDED, $first->get_status());
         $this->assertSame('approval_unavailable', $second->get_code());
         $this->assertSame(1, $action->execution_calls);
     }
@@ -175,7 +163,6 @@ final class ExecutionCoordinatorTest extends TestCase
         $action = $this->action();
         $action->throw_on_execute = true;
         $outcome = $this->coordinator($action)->execute($this->context(), $this->approval());
-
         $this->assertSame(ExecutionOutcome::UNKNOWN, $outcome->get_status());
         $this->assertSame(0, $action->verification_calls);
         $this->assertSame(1, $action->execution_calls);

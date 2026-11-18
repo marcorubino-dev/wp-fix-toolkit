@@ -49,33 +49,15 @@ final class ExecutionCoordinator
 
         $validation = $action->validate($context);
         if (!$validation->is_valid()) {
-            return new ExecutionOutcome(
-                ExecutionOutcome::REJECTED,
-                'validation_rejected',
-                'Action validation did not pass; execution was not started.',
-                $validation
-            );
+            return new ExecutionOutcome(ExecutionOutcome::REJECTED, 'validation_rejected', 'Action validation did not pass; execution was not started.', $validation);
         }
 
-        if (!$this->capabilities->has_all(
-            $context->get_requested_by(),
-            $definition->get_required_capabilities()
-        )) {
-            return new ExecutionOutcome(
-                ExecutionOutcome::REJECTED,
-                'capability_denied',
-                'The requesting user does not have all required capabilities.',
-                $validation
-            );
+        if (!$this->capabilities->has_all($context->get_requested_by(), $definition->get_required_capabilities())) {
+            return new ExecutionOutcome(ExecutionOutcome::REJECTED, 'capability_denied', 'The requesting user does not have all required capabilities.', $validation);
         }
 
         if (!$this->approval_store->consume($approval, $context, $this->clock->now())) {
-            return new ExecutionOutcome(
-                ExecutionOutcome::REJECTED,
-                'approval_unavailable',
-                'The approval is invalid, expired, belongs to another operation, or has already been consumed.',
-                $validation
-            );
+            return new ExecutionOutcome(ExecutionOutcome::REJECTED, 'approval_unavailable', 'The approval is invalid, expired, belongs to another operation, or has already been consumed.', $validation);
         }
 
         try {
@@ -109,13 +91,8 @@ final class ExecutionCoordinator
             );
         }
 
-        $status = ($execution->get_status() === ExecutionResult::UNKNOWN
-            || $verification->get_status() === VerificationResult::INCONCLUSIVE)
-            ? ExecutionOutcome::UNKNOWN
-            : ExecutionOutcome::COMPLETED;
-
         return new ExecutionOutcome(
-            $status,
+            $this->resolve_outcome_status($execution, $verification),
             'execution_processed',
             'The action execution and verification stages have finished.',
             $validation,
@@ -124,13 +101,27 @@ final class ExecutionCoordinator
         );
     }
 
+    private function resolve_outcome_status(ExecutionResult $execution, VerificationResult $verification)
+    {
+        if ($execution->get_status() === ExecutionResult::UNKNOWN
+            || $verification->get_status() === VerificationResult::INCONCLUSIVE) {
+            return ExecutionOutcome::UNKNOWN;
+        }
+
+        if ($execution->get_status() === ExecutionResult::FAILED
+            || $verification->get_status() === VerificationResult::FAILED) {
+            return ExecutionOutcome::FAILED;
+        }
+
+        if ($execution->get_status() === ExecutionResult::PARTIAL) {
+            return ExecutionOutcome::PARTIAL;
+        }
+
+        return ExecutionOutcome::SUCCEEDED;
+    }
+
     private function rejected($code, $message)
     {
-        return new ExecutionOutcome(
-            ExecutionOutcome::REJECTED,
-            $code,
-            $message,
-            ValidationResult::blocked(array())
-        );
+        return new ExecutionOutcome(ExecutionOutcome::REJECTED, $code, $message, ValidationResult::blocked(array()));
     }
 }

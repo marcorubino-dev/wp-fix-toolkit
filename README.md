@@ -13,6 +13,18 @@ WP Fix Toolkit is designed to turn approved technical operations into explicit, 
 5. **Verify** the resulting site state independently.
 6. **Audit** the request, execution, verification, and relevant events.
 
+## Outcome semantics
+
+The coordinator reports the final operation state separately from the fact that the processing stages finished:
+
+- rejected: validation, capability, or approval checks prevented execution.
+- succeeded: execution reported success and verification passed.
+- failed: execution reported failure or verification failed.
+- partial: execution reported a partial result and verification was conclusive without reporting failure.
+- unknown: execution or verification could not establish the resulting site state.
+
+A completed PHP method call is not, by itself, evidence that a repair succeeded.
+
 ## Design principles
 
 - Explicit approval for each action.
@@ -51,4 +63,4 @@ Audit events are append-only by application policy, not immutable against direct
 
 **Stage:** Execution safety foundations
 
-This project is under active development. The contracts and behavior may evolve before the first stable release. No production repair workflow should be assumed available yet.
+This project is under active development. The contracts and behavior may evolve before a stable release. No production repair workflow should be assumed available yet.
