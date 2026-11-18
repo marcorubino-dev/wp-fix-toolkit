@@ -7,16 +7,16 @@ WP Fix Toolkit is designed to turn approved technical operations into explicit, 
 ## Core workflow
 
 1. **Prepare** an action with normalized parameters and a defined scope.
-2. **Validate** the action, permissions, parameters, and preconditions.
+2. **Validate** the proposed operation and its preconditions before approval.
 3. **Request approval** from an authorized user for that specific operation.
-4. **Execute** the approved action once, within its declared scope.
+4. **Revalidate and execute** the approved action once, within its declared scope.
 5. **Verify** the resulting site state independently.
 6. **Audit** the request, execution, verification, and relevant events.
 
 ## Design principles
 
 - Explicit approval for each action.
-- Validation both before approval and immediately before execution.
+- The host integration validates the proposed operation before requesting approval; the execution coordinator validates again immediately before execution.
 - Exact action identity and version resolution.
 - Approval bound to a deterministic fingerprint of the complete operation context.
 - Single-use approval consumption through an explicit storage contract.
@@ -35,7 +35,7 @@ The first development stage establishes the foundation:
 - An action registry with duplicate protection and exact version lookup.
 - Unit tests, including registration of an external example action.
 
-The current execution coordinator includes a process-local approval store for tests and basic integrations. It is **not durable**, does not coordinate multiple PHP workers, and must not be treated as production-grade replay protection. A production integration must provide an atomic persistent implementation of the approval storage contract.
+The current execution coordinator includes a process-local approval store for tests and same-process integrations only. It is **not durable**, does not coordinate multiple PHP workers, and must not be treated as production-grade replay protection. A production integration must provide an atomic persistent implementation of the approval storage contract.
 
 The project does **not** yet include a WordPress administrative interface, real corrective actions, durable approval storage, or a persistent audit ledger. Those belong to later, separately reviewed stages.
 
