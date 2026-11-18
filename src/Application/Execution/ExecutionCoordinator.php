@@ -8,6 +8,7 @@ use MWS\WPFixToolkit\Domain\Context\ActionContext;
 use MWS\WPFixToolkit\Domain\Contracts\ActionRegistryInterface;
 use MWS\WPFixToolkit\Domain\Contracts\CapabilityCheckerInterface;
 use MWS\WPFixToolkit\Domain\Contracts\ClockInterface;
+use MWS\WPFixToolkit\Domain\Contracts\ExecutionApprovalStoreInterface;
 use MWS\WPFixToolkit\Domain\Results\ExecutionOutcome;
 use MWS\WPFixToolkit\Domain\Results\ExecutionResult;
 use MWS\WPFixToolkit\Domain\Results\ValidationResult;
@@ -18,15 +19,18 @@ final class ExecutionCoordinator
     private $registry;
     private $capabilities;
     private $clock;
+    private $approval_store;
 
     public function __construct(
         ActionRegistryInterface $registry,
         CapabilityCheckerInterface $capabilities,
-        ClockInterface $clock
+        ClockInterface $clock,
+        ExecutionApprovalStoreInterface $approval_store
     ) {
         $this->registry = $registry;
         $this->capabilities = $capabilities;
         $this->clock = $clock;
+        $this->approval_store = $approval_store;
     }
 
     public function execute(ActionContext $context, ExecutionApproval $approval): ExecutionOutcome
@@ -65,11 +69,11 @@ final class ExecutionCoordinator
             );
         }
 
-        if (!$approval->is_valid_for($context, $this->clock->now())) {
+        if (!$this->approval_store->consume($approval, $context, $this->clock->now())) {
             return new ExecutionOutcome(
                 ExecutionOutcome::REJECTED,
-                'approval_invalid',
-                'A current approval for this exact operation is required.',
+                'approval_unavailable',
+                'The approval is invalid, expired, belongs to another operation, or has already been consumed.',
                 $validation
             );
         }
