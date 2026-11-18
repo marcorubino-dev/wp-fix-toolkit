@@ -24,7 +24,7 @@ final class ExecutionCoordinatorTest extends TestCase
     {
         return new ActionContext(
             '123e4567-e89b-12d3-a456-426614174000',
-            'mws/test/noop',
+            'mws-test/test-noop',
             '1.0.0',
             7,
             array(),
@@ -106,7 +106,7 @@ final class ExecutionCoordinatorTest extends TestCase
     public function test_it_rejects_approval_for_another_operation()
     {
         $action = $this->action();
-        $wrong = new ExecutionApproval('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'mws/test/noop', '1.0.0', 9, 1700000000);
+        $wrong = new ExecutionApproval('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'mws-test/test-noop', '1.0.0', 9, 1700000000);
         $outcome = $this->coordinator($action)->execute($this->context(), $wrong);
 
         $this->assertSame('approval_invalid', $outcome->get_code());
@@ -143,7 +143,7 @@ final class CoordinatorTestAction implements FixActionInterface
 
     public function get_definition(): ActionDefinition
     {
-        return new ActionDefinition('mws/test/noop', '1.0.0', 'Test action', 'Test action.', ActionRiskLevel::LOW, array('manage_options'), ActionReversibility::REVERSIBLE);
+        return new ActionDefinition('mws-test/test-noop', '1.0.0', 'Test action', 'Test action.', ActionRiskLevel::LOW, array('manage_options'), ActionReversibility::REVERSIBLE);
     }
 
     public function validate(ActionContext $context): ValidationResult { return $this->validation; }
